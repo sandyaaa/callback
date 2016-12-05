@@ -1,1 +1,28 @@
+<? Php 
+$ Json_string  =  file_get_contents ( 'Php: // input' ); 
+$ JsonObj  =  json_decode ( $ Json_string ); 
+$ Untuk  =  $ JsonObj -> { "result" } [ 0 ] -> { "Content" } -> { "from" };
 
+// Jika jawaban dalam teks 
+$ Response_format_text  =  [ 'contentType' => 1 , "Prototipe" => 1 , "Text" => "Hello" ]; 
+// Jika jawaban pada gambar 
+$ Response_format_image  =  [ 'contentType ' => 2 , "Prototipe" => 1 , ' OriginalContentUrl ' => "image URL" , "PreviewImageUrl" => "thumbnail URL gambar" ]; 
+// selain berbagai tertentu 
+// ....
+
+// ToChannel dan eventType adalah karena nilai tetap, tidak perlu diubah. 
+Post_data $  =  [ "Untuk" => [ $ Untuk ], "ToChannel" => "1383378250" , "eventType" => "138311608800106203" , "Content" => $ Response_format_image ];
+
+Ch $  =  curl_init ( "Https://Trialbot-api.Line.Me/v1/events" ); 
+curl_setopt ( $ ch ,  CURLOPT_POST ,  true ); 
+curl_setopt ( $ ch ,  CURLOPT_CUSTOMREQUEST ,  'POST' ); 
+curl_setopt ( $ ch ,  CURLOPT_RETURNTRANSFER ,  true ); 
+curl_setopt ( $ Ch ,  CURLOPT_POSTFIELDS ,  json_encode ( $ Post_data )); 
+curl_setopt ( $ Ch ,  CURLOPT_HTTPHEADER ,  Array ( 
+    'Content-Type: Application / json; Charser = UTF-8' , 
+    'X-line- ID saluran: 1487336640 ' , 
+    ' X-Line-ChannelSecret: b6e059e8754a79ebb60e6ae57f0fcf76 ' , 
+    ' X-Line-Trusted-User-with-ACL: dikeluarkan MID ' 
+    )); 
+$result  =  Curl_exec ( $ ch ); 
+curl_close ( $ ch );
