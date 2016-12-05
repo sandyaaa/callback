@@ -1,28 +1,46 @@
-<? Php 
-$ Json_string  =  file_get_contents ( 'Php: // input' ); 
-$ JsonObj  =  json_decode ( $ Json_string ); 
-$ Untuk  =  $ JsonObj -> { "result" } [ 0 ] -> { "Content" } -> { "from" };
+require 'sinatra'
+require 'line/bot'
+require 'rest-client'
 
-// Jika jawaban dalam teks 
-$ Response_format_text  =  [ 'contentType' => 1 , "Prototipe" => 1 , "Text" => "Hello" ]; 
-// Jika jawaban pada gambar 
-$ Response_format_image  =  [ 'contentType ' => 2 , "Prototipe" => 1 , ' OriginalContentUrl ' => "image URL" , "PreviewImageUrl" => "thumbnail URL gambar" ]; 
-// selain berbagai tertentu 
-// ....
+def client
+  @client ||= Line::Bot::Client.new { |config|
+    config.channel_secret = ENV["b6e059e8754a79ebb60e6ae57f0fcf76"]
+    config.channel_token = ENV["SugiEHrsH9aJve1yyLme6+3910JwVPF1wSrwU5CCuq3fG4ywH0qcxGD5xuXNHdEIDw9/1LMJHR2wuvgmPfxh6VGKbKbS6/0tEmu7LPby6WvpG7ZcEv8WvEQVwUA0UHnzqvvCIJL0lbpLTCNuCzJuOQdB04t89/1O/w1cDnyilFU="]
+  }
+end
 
-// ToChannel dan eventType adalah karena nilai tetap, tidak perlu diubah. 
-Post_data $  =  [ "Untuk" => [ $ Untuk ], "ToChannel" => "1383378250" , "eventType" => "138311608800106203" , "Content" => $ Response_format_image ];
+def get_user_local_bot_reply(word)
+  response = RestClient.get 'https://chatbot-api.userlocal.jp/api/chat', { params: { key: ENV['USR_LOCAL_API_KEY'], message: CGI.escape(word) } }
+  response_json = JSON.parse(response)
+  response_json['status'] == "success" ? response_json['result'] : '通信エラー'
+end
 
-Ch $  =  curl_init ( "Https://Trialbot-api.Line.Me/v1/events" ); 
-curl_setopt ( $ ch ,  CURLOPT_POST ,  true ); 
-curl_setopt ( $ ch ,  CURLOPT_CUSTOMREQUEST ,  'POST' ); 
-curl_setopt ( $ ch ,  CURLOPT_RETURNTRANSFER ,  true ); 
-curl_setopt ( $ Ch ,  CURLOPT_POSTFIELDS ,  json_encode ( $ Post_data )); 
-curl_setopt ( $ Ch ,  CURLOPT_HTTPHEADER ,  Array ( 
-    'Content-Type: Application / json; Charser = UTF-8' , 
-    'X-line- ID saluran: 1487336640 ' , 
-    ' X-Line-ChannelSecret: b6e059e8754a79ebb60e6ae57f0fcf76 ' , 
-    ' X-Line-Trusted-User-with-ACL: dikeluarkan MID ' 
-    )); 
-$result  =  Curl_exec ( $ ch ); 
-curl_close ( $ ch );
+post '/callback' do
+  body = request.body.read
+
+  signature = request.env['HTTP_X_LINE_SIGNATURE']
+  unless client.validate_signature(body, signature)
+    error 400 do 'Bad Request' end
+  end
+
+  events = client.parse_events_from(body)
+  events.each { |event|
+    case event
+    when Line::Bot::Event::Message
+      case event.type
+      when Line::Bot::Event::MessageType::Text
+        message = {
+          type: 'text',
+          text: get_user_local_bot_reply(event.message['text'])
+        }
+        client.reply_message(event['replyToken'], message)
+      when Line::Bot::Event::MessageType::Image, Line::Bot::Event::MessageType::Video
+        response = client.get_message_content(event.message['id'])
+        tf = Tempfile.open("content")
+        tf.write(response.body)
+      end
+    end
+  }
+
+  "OK"
+end
